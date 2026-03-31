@@ -18,10 +18,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     settings = Settings()
 
+    # Set GEMINI_API_KEY in env so ChromaDB's embedding function can read it
+    if settings.gemini_api_key:
+        import os
+
+        os.environ["GEMINI_API_KEY"] = settings.gemini_api_key
+
     logger.info("Initializing vector store...")
     vector_store = VectorStore(
         persist_dir=settings.chroma_persist_dir,
         embedding_model=settings.embedding_model,
+        use_gemini=bool(settings.gemini_api_key),
     )
 
     if vector_store.is_populated():

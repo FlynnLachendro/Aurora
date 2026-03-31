@@ -190,7 +190,7 @@ def tmp_chroma_dir():
 
 @pytest.fixture
 def vector_store(tmp_chroma_dir: str) -> VectorStore:
-    return VectorStore(persist_dir=tmp_chroma_dir, embedding_model="all-MiniLM-L6-v2")
+    return VectorStore(persist_dir=tmp_chroma_dir, embedding_model="text-embedding-3-small")
 
 
 @pytest.fixture

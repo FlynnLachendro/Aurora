@@ -80,7 +80,7 @@ def integration_documents() -> list[Document]:
 @pytest.fixture
 def integration_app(integration_documents: list[Document]):
     with tempfile.TemporaryDirectory() as tmpdir:
-        vector_store = VectorStore(persist_dir=tmpdir, embedding_model="all-MiniLM-L6-v2")
+        vector_store = VectorStore(persist_dir=tmpdir, embedding_model="text-embedding-3-small")
         vector_store.ingest(integration_documents)
 
         retrieval_service = RetrievalService(vector_store=vector_store, top_k=10, similarity_threshold=1.5)

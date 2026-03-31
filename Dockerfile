@@ -10,9 +10,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src/ src/
 RUN uv sync --frozen --no-dev
 
-# Pre-download embedding model at build time to avoid runtime download
-RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
-
 ENV PORT=8000
 EXPOSE ${PORT}
 
