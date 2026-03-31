@@ -44,8 +44,11 @@ class RetrievalService:
         return chunks
 
     def retrieve(self, question: str) -> list[RetrievedChunk]:
+        # Embed question ONCE, reuse vector for all queries
+        question_embedding = self._vector_store.embed(question)
+
         # Primary query: top results across all sources
-        primary = self._vector_store.query(question, top_k=self._top_k)
+        primary = self._vector_store.query(embedding=question_embedding, top_k=self._top_k)
         chunks = self._parse_results(primary)
         seen_ids = {c.source_id for c in chunks}
 
@@ -53,7 +56,7 @@ class RetrievalService:
         # rare types (whoop, calendar, spotify) aren't drowned out by 3,000+ messages
         for source_type in ENRICHMENT_TYPES:
             enrichment = self._vector_store.query(
-                question,
+                embedding=question_embedding,
                 top_k=5,
                 where={"source_type": source_type},
             )

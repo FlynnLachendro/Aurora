@@ -88,12 +88,28 @@ Returns `{"status": "ok"}` for health checks.
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Vector store | Single ChromaDB collection with `source_type` metadata | Cross-domain questions need unified search across all data types |
-| Embedding model | all-MiniLM-L6-v2 (384-dim) | Fast, CPU-only, good quality, ~80MB — no GPU needed |
-| Document format | Natural language sentences | Embedding model was trained on natural language, not raw JSON |
-| LLM | Gemini 2.0 Flash via OpenRouter | Fast inference (~500-800ms), cost-effective, JSON output mode |
+| Embedding | Gemini Embedding API (`gemini-embedding-001`) | API-based embedding is faster on cloud infra than running a local model on limited CPU |
+| Embedding strategy | Embed question once, reuse vector for all 5 retrieval queries | Avoids redundant API calls — 1 embed call instead of 5 |
+| Retrieval | Multi-source enrichment (primary + per-source-type queries) | Prevents rare data types (31 whoop records) from being drowned out by 3,349 messages |
+| Document format | Natural language sentences | Embedding models are trained on natural language, not raw JSON |
+| LLM | Gemini 2.0 Flash via OpenRouter | Best balance of speed, quality, and reliability (see benchmarks below) |
 | No-data handling | Similarity threshold filter, skip LLM call | Prevents hallucination on out-of-scope queries, saves latency |
 | Warm restart | `is_populated()` check on startup | Skip re-ingestion if data exists — fast restarts after first deploy |
 | Confidence calibration | Rubric in system prompt (0.9+ explicit, 0.7-0.9 inference, <0.5 insufficient) | Prevents model from always returning high confidence |
+
+## LLM Benchmarks
+
+We evaluated 5 models via OpenRouter across 5 test questions (factual, health/whoop, calendar, preference, and out-of-scope). Each model was scored on average latency (generation only), average confidence calibration, and reliability (successful JSON responses).
+
+| Model | Avg Latency | Avg Confidence | Reliability | Notes |
+|-------|------------|----------------|-------------|-------|
+| **Gemini 2.0 Flash** | **1,128ms** | **0.70** | **5/5** | Best balance — fast, reliable, well-calibrated |
+| Gemini 2.0 Flash Lite | 1,119ms | 0.66 | 5/5 | Marginally faster, slightly less precise on nuanced questions |
+| Claude 3.5 Haiku | 2,469ms | 0.54 | 5/5 | Overly cautious (0.10 confidence on answerable questions), hallucinated on out-of-scope query |
+| Llama 4 Scout | 2,868ms | 0.65 | 4/5 | JSON output failed on 1/5 queries |
+| Qwen 3 8B | 6,234ms | 0.94 | 4/5 | Highest confidence but 5x slower, JSON parsing unreliable |
+
+**Selected: Gemini 2.0 Flash** — fastest reliable model with well-calibrated confidence scores. Correctly returns 0.0 confidence on out-of-scope questions (no hallucination), while maintaining high confidence (0.9-1.0) on directly answerable queries.
 
 ## Testing
 

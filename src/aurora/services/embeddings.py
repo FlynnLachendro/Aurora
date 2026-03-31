@@ -66,17 +66,24 @@ class VectorStore:
 
         logger.info(f"Ingestion complete. Total: {self._collection.count()} documents")
 
+    def embed(self, text: str) -> list[float]:
+        return self._embedding_fn([text])[0]
+
     def query(
         self,
-        text: str,
+        text: str | None = None,
+        embedding: list[float] | None = None,
         top_k: int = 15,
         where: dict | None = None,
     ) -> dict:
         kwargs: dict = {
-            "query_texts": [text],
             "n_results": top_k,
             "include": ["documents", "metadatas", "distances"],
         }
+        if embedding is not None:
+            kwargs["query_embeddings"] = [embedding]
+        elif text is not None:
+            kwargs["query_texts"] = [text]
         if where:
             kwargs["where"] = where
         return self._collection.query(**kwargs)

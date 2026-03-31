@@ -7,6 +7,10 @@
 | 2026-03-31 | self | Aurora API returned 400 intermittently at certain skip values | Added `_get_with_retry()` with 3 attempts and backoff |
 | 2026-03-31 | self | Whoop/calendar/spotify data drowned out by 3,349 messages in single vector query | Multi-source retrieval: primary query + per-source-type enrichment queries |
 | 2026-03-31 | self | Integration tests failed because ASGITransport doesn't trigger FastAPI lifespan | Set app.state directly in test fixture instead of relying on lifespan |
+| 2026-03-31 | self | sentence-transformers embedding on Railway CPU took 13s per query | Swap to API-based embeddings (Gemini embedding API) — network is faster than weak CPU |
+| 2026-03-31 | self | GoogleGeminiEmbeddingFunction reads GEMINI_API_KEY from os.environ, not constructor | Must set os.environ["GEMINI_API_KEY"] before creating the embedding function |
+| 2026-03-31 | self | Google embed API has 100-item batch limit, also hit 3000 req/min rate limit | Reduced UPSERT_BATCH_SIZE to 100, added retry with backoff for 429s |
+| 2026-03-31 | self | Railway PORT env var not used — hardcoded 8000 in Dockerfile CMD | Use `${PORT}` in CMD with shell form |
 
 ## User Preferences
 - Uses `uv` for package management, avoids venvs
