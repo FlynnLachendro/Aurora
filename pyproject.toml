@@ -1,0 +1,58 @@
+[project]
+name = "aurora"
+version = "0.1.0"
+description = "Aurora Q&A service — answers natural language questions grounded in member data"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.27.0",
+    "chromadb>=1.0.0",
+    "sentence-transformers>=3.0.0",
+    "openai>=1.50.0",
+    "pydantic-settings>=2.6.0",
+    "loguru>=0.7.0",
+    "anthropic>=0.86.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24.0",
+    "respx>=0.22.0",
+    "mypy>=1.13.0",
+    "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aurora"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "e2e: end-to-end tests that hit real external services",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/aurora/services/llm.py" = ["E501"]
+"src/aurora/core/logging.py" = ["E501"]
+"tests/**" = ["E501"]
