@@ -1,3 +1,11 @@
+"""
+Aurora Q&A Service — FastAPI application entry point.
+
+Lifespan handles one-time startup: fetches all member data from Aurora's API,
+embeds it into ChromaDB via Gemini's embedding API, and initializes the
+retrieval + LLM services. Subsequent restarts skip ingestion if data persists.
+"""
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,7 +26,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     settings = Settings()
 
-    # Set GEMINI_API_KEY in env so ChromaDB's embedding function can read it
+    # ChromaDB's GoogleGeminiEmbeddingFunction reads GEMINI_API_KEY from os.environ
+    # directly (not from constructor args), so we propagate it from Pydantic Settings.
     if settings.gemini_api_key:
         import os
 
@@ -31,6 +40,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         use_gemini=bool(settings.gemini_api_key),
     )
 
+    # Skip re-ingestion on warm restarts — ChromaDB persists to disk.
+    # Cold start (first deploy) fetches all 5 API endpoints concurrently
+    # and embeds ~3,873 documents into ChromaDB (~90s with rate limiting).
     if vector_store.is_populated():
         logger.info("Vector store already populated, skipping ingestion")
     else:
@@ -40,6 +52,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         vector_store.ingest(documents)
         app.state.profile = profile
 
+    # On warm restart, profile isn't in app.state yet — fetch it separately.
+    # This is a single lightweight GET, not a full re-ingestion.
     if not hasattr(app.state, "profile") or app.state.profile is None:
         import httpx
 
@@ -53,6 +67,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             profile_data = await fetch_profile(client)
             app.state.profile = UserProfile(**profile_data)
 
+    # Services are stored on app.state for dependency injection via request.app.state
+    # in route handlers. This avoids global state and makes testing straightforward.
     app.state.retrieval_service = RetrievalService(
         vector_store=vector_store,
         top_k=settings.retrieval_top_k,
@@ -82,4 +98,5 @@ app.include_router(ask_router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Health check endpoint for Railway's deployment monitoring."""
     return {"status": "ok"}

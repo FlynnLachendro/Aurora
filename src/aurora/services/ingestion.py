@@ -1,3 +1,18 @@
+"""
+Data ingestion service — fetches all data from Aurora's API and converts to documents.
+
+Handles 5 data sources concurrently:
+- /messages/ (3,349 concierge messages from multiple members)
+- /hackathon/calendar-events/ (154 events for James Fletcher)
+- /hackathon/spotify/ (338 listening history entries)
+- /hackathon/whoop/ (31 days of health/sleep/fitness data)
+- /hackathon/me/ (James Fletcher's profile)
+
+Each record is converted to a natural language sentence for embedding.
+Raw JSON would produce poor similarity scores since the embedding model
+(gemini-embedding-001) was trained on natural language text.
+"""
+
 import asyncio
 
 import httpx
@@ -32,6 +47,7 @@ async def _get_with_retry(
     params: dict,
     max_retries: int = 3,
 ) -> httpx.Response:
+    """GET with retry — Aurora's API returns intermittent 4xx/5xx errors."""
     for attempt in range(max_retries):
         resp = await client.get(path, params=params)
         if resp.status_code < 400:
@@ -41,7 +57,7 @@ async def _get_with_retry(
             logger.warning(f"Retry {attempt + 1}/{max_retries} for {path} (status {resp.status_code})")
             await asyncio.sleep(wait)
     resp.raise_for_status()
-    return resp  # unreachable, but keeps type checker happy
+    return resp
 
 
 async def fetch_all_paginated(
@@ -49,6 +65,7 @@ async def fetch_all_paginated(
     path: str,
     page_size: int = 100,
 ) -> list[dict]:
+    """Fetch all pages from a paginated Aurora API endpoint."""
     items: list[dict] = []
     skip = 0
 
@@ -73,6 +90,12 @@ async def fetch_profile(client: httpx.AsyncClient) -> dict:
     return resp.json()
 
 
+# --- Document text constructors ---
+# Each function converts an API record into a natural language sentence
+# suitable for semantic embedding. The format matters — it determines
+# how well the embedding model matches questions to relevant data.
+
+
 def message_to_document(msg: Message) -> Document:
     date = msg.timestamp[:10] if msg.timestamp else ""
     text = f"[{date}] {msg.user_name}: {msg.message}"
@@ -86,9 +109,7 @@ def message_to_document(msg: Message) -> Document:
 
 
 def calendar_to_document(event: CalendarEvent) -> Document:
-    start_dt = event.start
-    end_dt = event.end
-    parts = [f"Calendar event: {event.title} on {start_dt} to {end_dt}"]
+    parts = [f"Calendar event: {event.title} on {event.start} to {event.end}"]
     if event.location:
         parts.append(f"Location: {event.location}")
     parts.append(f"Type: {event.type}")
@@ -164,6 +185,11 @@ def profile_to_document(profile: UserProfile) -> Document:
 async def fetch_all_data(
     settings: Settings,
 ) -> tuple[list[Document], UserProfile]:
+    """Fetch all 5 Aurora API endpoints concurrently and convert to documents.
+
+    All endpoints are fetched in parallel via asyncio.gather() for speed.
+    The Aurora API requires follow_redirects=True (returns 307 on some paths).
+    """
     async with httpx.AsyncClient(base_url=settings.aurora_api_base_url, timeout=30.0, follow_redirects=True) as client:
         messages_raw, calendar_raw, spotify_raw, whoop_raw, profile_raw = await asyncio.gather(
             fetch_all_paginated(client, API_MESSAGES_PATH, settings.aurora_api_page_size),

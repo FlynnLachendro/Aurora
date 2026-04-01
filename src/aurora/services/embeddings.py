@@ -1,3 +1,12 @@
+"""
+Vector store service wrapping ChromaDB.
+
+Uses a single collection with source_type metadata tags so cross-domain questions
+("What was James doing on Feb 15?") can retrieve calendar + whoop + spotify results
+in one search. Embedding is done via Gemini's API (fast, no local model needed),
+with a fallback to ChromaDB's default local embedder for tests.
+"""
+
 import time
 
 import chromadb
@@ -11,6 +20,8 @@ from aurora.models import Document
 class VectorStore:
     def __init__(self, persist_dir: str, embedding_model: str, use_gemini: bool = False) -> None:
         self._client = chromadb.PersistentClient(path=persist_dir)
+        # In production, use Gemini's embedding API (fast, ~200ms per call).
+        # In tests, fall back to ChromaDB's default local embedder (no API key needed).
         if use_gemini:
             self._embedding_fn = ef.GoogleGeminiEmbeddingFunction(
                 model_name=embedding_model,
@@ -33,6 +44,12 @@ class VectorStore:
         return count > 0
 
     def ingest(self, documents: list[Document]) -> None:
+        """Embed and upsert documents into ChromaDB in batches.
+
+        Uses upsert (not add) for idempotency — safe to re-run without duplicates.
+        Includes retry with backoff for Google's embedding API rate limits (429s).
+        Batch size is 100 to stay within Google's per-request limit.
+        """
         if not documents:
             return
 
@@ -67,6 +84,12 @@ class VectorStore:
         logger.info(f"Ingestion complete. Total: {self._collection.count()} documents")
 
     def embed(self, text: str) -> list[float]:
+        """Embed a single text string and return the raw vector.
+
+        Used by RetrievalService to embed the question ONCE and reuse the vector
+        across all 5 retrieval queries (1 primary + 4 enrichment), avoiding
+        redundant API calls.
+        """
         return self._embedding_fn([text])[0]
 
     def query(
@@ -76,6 +99,11 @@ class VectorStore:
         top_k: int = 15,
         where: dict | None = None,
     ) -> dict:
+        """Search ChromaDB by text (embeds it) or pre-computed embedding vector.
+
+        Passing a pre-computed embedding skips the embedding API call entirely,
+        making subsequent queries after the first near-instant (~5ms local search).
+        """
         kwargs: dict = {
             "n_results": top_k,
             "include": ["documents", "metadatas", "distances"],

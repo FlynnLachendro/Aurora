@@ -1,3 +1,12 @@
+"""
+Pydantic models for Aurora Q&A service.
+
+Three categories:
+1. Aurora API data models — typed representations of the 5 external API endpoints
+2. Request/response models — the POST /ask contract
+3. Internal models — Document (for ChromaDB ingestion) and RetrievedChunk (search results)
+"""
+
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
@@ -6,6 +15,8 @@ T = TypeVar("T")
 
 
 # --- Aurora API data models ---
+# These match the exact JSON shapes returned by Aurora's API at
+# november7-730026606190.europe-west1.run.app
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
@@ -98,7 +109,7 @@ class UserProfile(BaseModel):
     summary: str
 
 
-# --- Request/Response models ---
+# --- Request/Response models (POST /ask contract) ---
 
 
 class AskRequest(BaseModel):
@@ -108,8 +119,8 @@ class AskRequest(BaseModel):
 class AskMetadata(BaseModel):
     reasoning: str
     sources_considered: int
-    retrieval_time_ms: float
-    generation_time_ms: float
+    retrieval_time_ms: float  # Time for embedding + ChromaDB search
+    generation_time_ms: float  # Time for LLM call
 
 
 class AskResponse(BaseModel):
@@ -123,6 +134,13 @@ class AskResponse(BaseModel):
 
 
 class Document(BaseModel):
+    """A document prepared for ChromaDB ingestion.
+
+    text: Natural language representation of the record (for embedding).
+    source_id: Unique ID — native for messages/calendar/spotify, synthetic for whoop/profile.
+    source_type: Used for metadata filtering in multi-source retrieval.
+    """
+
     source_id: str
     source_type: str
     text: str
@@ -131,6 +149,8 @@ class Document(BaseModel):
 
 
 class RetrievedChunk(BaseModel):
+    """A search result from ChromaDB with its similarity distance."""
+
     source_id: str
     source_type: str
     text: str

@@ -1,3 +1,14 @@
+"""
+LLM answer generation service.
+
+Uses Gemini 2.0 Flash via OpenRouter (selected after benchmarking 5 models — see README).
+The system prompt is the most evaluation-sensitive component: it enforces grounded answers,
+source citation, confidence calibration, and no-hallucination behavior.
+
+Gemini Flash was chosen for: best latency (~1.1s), 100% JSON reliability, and well-calibrated
+confidence (0.0 on out-of-scope, 0.9+ on direct matches). See README for full benchmark.
+"""
+
 import json
 
 from loguru import logger
@@ -38,6 +49,11 @@ def build_user_prompt(
     chunks: list[RetrievedChunk],
     profile: UserProfile | None,
 ) -> str:
+    """Build the user prompt with profile context + retrieved chunks + question.
+
+    James Fletcher's profile is always injected so personal questions about the
+    primary user work even if the profile doesn't surface in retrieval results.
+    """
     parts: list[str] = []
 
     if profile:
@@ -57,9 +73,11 @@ def build_user_prompt(
 
 
 def parse_llm_response(content: str) -> dict:
+    """Parse JSON from LLM response, handling cases where the model wraps JSON in text."""
     try:
         return json.loads(content)
     except json.JSONDecodeError:
+        # Fallback: extract JSON object from surrounding text
         start = content.find("{")
         end = content.rfind("}") + 1
         if start != -1 and end > start:
@@ -69,6 +87,9 @@ def parse_llm_response(content: str) -> dict:
 
 class LLMService:
     def __init__(self, api_key: str, base_url: str, model: str) -> None:
+        # OpenRouter exposes an OpenAI-compatible API, so we use the openai SDK
+        # pointed at OpenRouter's base URL. This gives us JSON output mode,
+        # async support, and proper error handling for free.
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._model = model
 
@@ -78,6 +99,8 @@ class LLMService:
         chunks: list[RetrievedChunk],
         profile: UserProfile | None = None,
     ) -> AskResponse:
+        # No chunks passed threshold → return immediately without LLM call.
+        # This prevents hallucination on out-of-scope queries and saves latency.
         if not chunks:
             return self._no_data_response()
 
@@ -91,7 +114,7 @@ class LLMService:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.1,
+            temperature=0.1,  # Near-deterministic for factual accuracy
             response_format={"type": "json_object"},
         )
 
@@ -100,18 +123,24 @@ class LLMService:
 
         return AskResponse(
             answer=parsed.get("answer", "Unable to generate an answer."),
+            # Clamp confidence to [0, 1] in case the model outputs something wild
             confidence=min(max(float(parsed.get("confidence", 0.0)), 0.0), 1.0),
             sources=parsed.get("sources", []),
             metadata=AskMetadata(
                 reasoning=parsed.get("reasoning", ""),
                 sources_considered=len(chunks),
-                retrieval_time_ms=0.0,
+                retrieval_time_ms=0.0,  # Filled in by the router after timing
                 generation_time_ms=0.0,
             ),
         )
 
     @staticmethod
     def _no_data_response() -> AskResponse:
+        """Return a graceful response when no relevant data is found.
+
+        Skips the LLM call entirely — no point sending an empty context
+        to the model, it would just hallucinate.
+        """
         return AskResponse(
             answer="I don't have enough information in the available data to answer this question.",
             confidence=0.0,
