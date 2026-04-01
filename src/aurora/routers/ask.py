@@ -30,7 +30,8 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     retrieval_ms = (time.perf_counter() - retrieval_start) * 1000
 
     # Send only the best chunks to the LLM — already sorted by distance
-    llm_chunks = chunks[:MAX_LLM_CHUNKS]
+    cap = body.max_chunks or MAX_LLM_CHUNKS
+    llm_chunks = chunks[:cap]
 
     generation_start = time.perf_counter()
     response = await llm_service.generate_answer(body.question, llm_chunks, profile)

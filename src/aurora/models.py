@@ -106,6 +106,7 @@ class UserProfile(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
+    max_chunks: int | None = Field(None, ge=1, le=30, description="Override max chunks sent to LLM")
 
 
 class AskMetadata(BaseModel):
