@@ -42,7 +42,7 @@ def hybrid_confidence(llm_confidence: float, chunks: list[RetrievedChunk]) -> fl
     return round(0.5 * llm_confidence + 0.5 * ret_conf, 2)
 
 
-@router.post("/ask", response_model=AskResponse)
+@router.post("/ask", response_model=AskResponse, response_model_exclude_none=True)
 async def ask(request: Request, body: AskRequest) -> AskResponse:
     retrieval_service: RetrievalService = request.app.state.retrieval_service
     llm_service: LLMService = request.app.state.llm_service

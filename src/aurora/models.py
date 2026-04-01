@@ -123,7 +123,7 @@ class AskMetadata(BaseModel):
     sources_considered: int
     retrieval_time_ms: float  # Time for embedding + ChromaDB search
     generation_time_ms: float  # Time for LLM call
-    judge: JudgeResult | None = None  # Present when judge=true in request
+    judge: JudgeResult | None = None  # Only present when judge=true in request
 
 
 class AskResponse(BaseModel):
