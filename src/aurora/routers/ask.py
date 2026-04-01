@@ -34,7 +34,10 @@ def hybrid_confidence(llm_confidence: float, chunks: list[RetrievedChunk]) -> fl
 
     50/50 weight: LLM judges answer quality, retrieval grounds it in data relevance.
     If the LLM is overconfident but retrieval was weak, the score gets pulled down.
+    Exception: if the LLM says 0.0 (no data), trust it — don't let retrieval inflate.
     """
+    if llm_confidence == 0.0:
+        return 0.0
     ret_conf = retrieval_confidence(chunks)
     return round(0.5 * llm_confidence + 0.5 * ret_conf, 2)
 
