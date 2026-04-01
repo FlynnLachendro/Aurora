@@ -1,6 +1,11 @@
 # Aurora Q&A Service
 
+**Live URL**: https://aurora-qa-production.up.railway.app
+**Swagger Docs**: https://aurora-qa-production.up.railway.app/docs
+
 A question-answering service that provides precise, grounded insights into member data from Aurora's concierge platform. Answers natural language questions by combining semantic search over member history with LLM-powered answer generation.
+
+> **Note on data sources**: The assignment specifies integrating with the Messages API. This service goes beyond that by also indexing all available hackathon endpoints — calendar events (154), Spotify listening history (338), Whoop health data (31 days), and the member profile — enabling cross-domain questions like "How did James sleep on February 15th?" or "What does James listen to during deep work?" that would be unanswerable from messages alone.
 
 ## Architecture
 
@@ -18,8 +23,8 @@ Aurora API (Cloud Run)            Aurora Q&A Service (FastAPI)
 **Data flow:**
 
 1. **Startup**: Fetches all data from Aurora's API (messages, calendar, Spotify, Whoop, profile) concurrently
-2. **Indexing**: Converts each record to natural language text, embeds via `all-MiniLM-L6-v2`, stores in ChromaDB
-3. **Query**: Embeds the question, performs cosine similarity search for top-15 relevant chunks
+2. **Indexing**: Converts each record to natural language text, embeds via Gemini Embedding API (`gemini-embedding-001`), stores in ChromaDB
+3. **Query**: Embeds the question once, performs cosine similarity search across primary + per-source-type enrichment queries
 4. **Answer**: Passes retrieved context to Gemini 2.0 Flash, which returns a structured answer with confidence score, source IDs, and reasoning trace
 
 ## Quick Start
