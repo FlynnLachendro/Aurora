@@ -111,7 +111,7 @@ class AskRequest(BaseModel):
 
 
 class JudgeResult(BaseModel):
-    """Independent LLM evaluation of answer groundedness."""
+    """Opt-in judge (judge=true). Used to validate hybrid confidence during development."""
 
     score: float = Field(..., ge=0.0, le=1.0)
     assessment: str

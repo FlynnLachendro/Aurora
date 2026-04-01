@@ -66,7 +66,7 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     # Hybrid confidence: blend LLM self-report with retrieval distance signal
     response.confidence = hybrid_confidence(response.confidence, llm_chunks)
 
-    # Optional judge: independent LLM evaluation of answer groundedness
+    # Opt-in judge: used during development to validate confidence scoring. Off by default.
     if body.judge and llm_chunks:
         judge_result = await llm_service.judge_answer(body.question, response.answer, llm_chunks)
         response.metadata.judge = judge_result

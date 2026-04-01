@@ -120,6 +120,11 @@ class LLMService:
             ),
         )
 
+    # --- Judge (opt-in via judge=true in request) ---
+    # Used during development to validate answer quality against our hybrid confidence
+    # scoring. Not part of the default request flow — adds ~1s latency when enabled.
+    # See README "LLM-as-Judge Verification" for results.
+
     async def judge_answer(
         self,
         question: str,
