@@ -53,6 +53,14 @@
 - Chose Gemini Flash via OpenRouter: fastest, comfortably under 2s, good quality
 - OpenRouter middleman overhead (~50-200ms) is small vs model speed differences
 
+## Chunk Cap Sweep (2026-04-01, against live Railway deployment)
+- Swept max_chunks 1-10 across 13 test questions (all data types + edge cases)
+- Confidence is FLAT (0.79-0.83) regardless of chunk count — top 1-2 chunks contain the signal
+- Generation time scales linearly: cap=1 → 1,141ms, cap=10 → 2,473ms
+- Cap=2 had highest avg confidence (0.83) — set as default
+- No-data handling perfect at all cap values (2/2 out-of-scope questions correctly returned 0.0)
+- Key insight: more context ≠ better answers for this dataset. Retrieval quality matters more than quantity.
+
 ## Domain Notes
 
 ### Project: Aurora Take-Home

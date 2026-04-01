@@ -11,9 +11,9 @@ from aurora.services.retrieval import RetrievalService
 
 router = APIRouter()
 
-# Cap chunks sent to LLM — retrieval finds 20-30 for diversity,
-# but only the top 10 (by distance) go to the model to keep generation fast.
-MAX_LLM_CHUNKS = 3
+# Benchmarked caps 1-10: confidence flat (0.79-0.83), gen time scales linearly.
+# Cap=2 had highest avg confidence (0.83) at near-fastest speed.
+MAX_LLM_CHUNKS = 2
 
 
 @router.post("/ask", response_model=AskResponse)

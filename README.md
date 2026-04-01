@@ -94,6 +94,7 @@ Returns `{"status": "ok"}` for health checks.
 | Document format | Natural language sentences | Embedding models are trained on natural language, not raw JSON |
 | LLM | Gemini 2.0 Flash via OpenRouter | Best balance of speed, quality, and reliability (see benchmarks below) |
 | No-data handling | Similarity threshold filter, skip LLM call | Prevents hallucination on out-of-scope queries, saves latency |
+| LLM context cap | Top 2 chunks sent to LLM (see chunk optimization below) | Benchmarked 1-10: confidence flat, generation time scales linearly |
 | Warm restart | `is_populated()` check on startup | Skip re-ingestion if data exists — fast restarts after first deploy |
 | Confidence calibration | Rubric in system prompt (0.9+ explicit, 0.7-0.9 inference, <0.5 insufficient) | Prevents model from always returning high confidence |
 
@@ -110,6 +111,27 @@ We evaluated 5 models via OpenRouter across 5 test questions (factual, health/wh
 | Qwen 3 8B | 6,234ms | 0.94 | 4/5 | Highest confidence but 5x slower, JSON parsing unreliable |
 
 **Selected: Gemini 2.0 Flash** — fastest reliable model with well-calibrated confidence scores. Correctly returns 0.0 confidence on out-of-scope questions (no hallucination), while maintaining high confidence (0.9-1.0) on directly answerable queries.
+
+## Chunk Cap Optimization
+
+After selecting the LLM, we swept the number of context chunks (1-10) sent to the model across 13 test questions covering all data types, edge cases, and no-data scenarios. The retrieval layer finds 20-30 chunks for diversity, but only the top N (by cosine distance) are passed to the LLM.
+
+| Chunks | Avg Confidence | Avg Gen Time | Avg Total | No-data correct |
+|--------|---------------|-------------|-----------|-----------------|
+| **1** | **0.80** | **1,141ms** | **2,933ms** | **2/2** |
+| **2** | **0.83** | **1,260ms** | **3,211ms** | **2/2** |
+| 3 | 0.82 | 1,517ms | 3,211ms | 2/2 |
+| 4 | 0.79 | 1,761ms | 3,149ms | 2/2 |
+| 5 | 0.80 | 1,779ms | 3,209ms | 2/2 |
+| 6 | 0.82 | 1,845ms | 3,313ms | 2/2 |
+| 7 | 0.81 | 1,927ms | 3,803ms | 2/2 |
+| 8 | 0.80 | 2,259ms | 4,073ms | 2/2 |
+| 9 | 0.80 | 2,307ms | 3,954ms | 2/2 |
+| 10 | 0.82 | 2,473ms | 4,170ms | 2/2 |
+
+**Finding: confidence is flat (0.79-0.83) across all chunk counts, while generation time scales linearly.** The top 1-2 chunks contain the relevant signal; additional chunks add tokens without improving answer quality. No-data handling (out-of-scope questions returning 0.0 confidence) is perfect across all values.
+
+**Selected: 2 chunks** — highest average confidence (0.83) at nearly the fastest generation time. Gives the LLM a second data point to cross-reference without the cost of additional context.
 
 ## Testing
 
