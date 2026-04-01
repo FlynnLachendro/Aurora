@@ -11,6 +11,10 @@ from aurora.services.retrieval import RetrievalService
 
 router = APIRouter()
 
+# Cap chunks sent to LLM — retrieval finds 20-30 for diversity,
+# but only the top 10 (by distance) go to the model to keep generation fast.
+MAX_LLM_CHUNKS = 10
+
 
 @router.post("/ask", response_model=AskResponse)
 async def ask(request: Request, body: AskRequest) -> AskResponse:
@@ -25,8 +29,11 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     chunks = retrieval_service.retrieve(body.question)
     retrieval_ms = (time.perf_counter() - retrieval_start) * 1000
 
+    # Send only the best chunks to the LLM — already sorted by distance
+    llm_chunks = chunks[:MAX_LLM_CHUNKS]
+
     generation_start = time.perf_counter()
-    response = await llm_service.generate_answer(body.question, chunks, profile)
+    response = await llm_service.generate_answer(body.question, llm_chunks, profile)
     generation_ms = (time.perf_counter() - generation_start) * 1000
 
     response.metadata.retrieval_time_ms = round(retrieval_ms, 2)
