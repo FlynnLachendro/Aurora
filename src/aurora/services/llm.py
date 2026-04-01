@@ -6,7 +6,7 @@ from typing import Any
 from loguru import logger
 from openai import AsyncOpenAI
 
-from aurora.models import AskMetadata, AskResponse, RetrievedChunk, UserProfile
+from aurora.models import AskMetadata, AskResponse, JudgeResult, RetrievedChunk, UserProfile
 
 SYSTEM_PROMPT = """You are Aurora's concierge intelligence assistant. You answer questions about members based ONLY on the provided context data.
 
@@ -119,6 +119,49 @@ class LLMService:
                 generation_time_ms=0.0,
             ),
         )
+
+    async def judge_answer(
+        self,
+        question: str,
+        answer: str,
+        chunks: list[RetrievedChunk],
+    ) -> JudgeResult:
+        """Independent LLM judge — evaluates if the answer is grounded in the sources.
+
+        Uses the same model but a different role: instead of answering the question,
+        it evaluates whether someone else's answer is supported by the evidence.
+        """
+        sources_text = "\n".join(f"[{c.source_id}] {c.text}" for c in chunks)
+
+        judge_prompt = (
+            f"You are an independent judge evaluating answer quality.\n\n"
+            f"QUESTION: {question}\n\n"
+            f"ANSWER GIVEN: {answer}\n\n"
+            f"SOURCE DATA:\n{sources_text}\n\n"
+            f"Evaluate: Is the answer factually supported by the source data?\n"
+            f"Respond with JSON only:\n"
+            f'{{"score": 0.0-1.0, "assessment": "brief explanation", "agrees_with_answer": true/false}}\n'
+            f"Score guide: 1.0 = fully supported, 0.7 = mostly supported, "
+            f"0.5 = partially, 0.3 = weakly, 0.0 = unsupported or hallucinated."
+        )
+
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": judge_prompt}],
+                temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            content = response.choices[0].message.content or "{}"
+            parsed = parse_llm_response(content)
+            return JudgeResult(
+                score=min(max(float(parsed.get("score", 0.0)), 0.0), 1.0),
+                assessment=parsed.get("assessment", ""),
+                agrees_with_answer=parsed.get("agrees_with_answer", False),
+            )
+        except Exception as e:
+            logger.error(f"Judge call failed: {e}")
+            return JudgeResult(score=0.0, assessment=f"Judge error: {e}", agrees_with_answer=False)
 
     @staticmethod
     def _no_data_response() -> AskResponse:

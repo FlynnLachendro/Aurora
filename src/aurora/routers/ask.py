@@ -66,6 +66,11 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     # Hybrid confidence: blend LLM self-report with retrieval distance signal
     response.confidence = hybrid_confidence(response.confidence, llm_chunks)
 
+    # Optional judge: independent LLM evaluation of answer groundedness
+    if body.judge and llm_chunks:
+        judge_result = await llm_service.judge_answer(body.question, response.answer, llm_chunks)
+        response.metadata.judge = judge_result
+
     response.metadata.retrieval_time_ms = round(retrieval_ms, 2)
     response.metadata.generation_time_ms = round(generation_ms, 2)
 

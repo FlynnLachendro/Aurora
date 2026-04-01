@@ -107,6 +107,15 @@ class UserProfile(BaseModel):
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
     max_chunks: int | None = Field(None, ge=1, le=30, description="Override max chunks sent to LLM")
+    judge: bool = Field(False, description="Run independent LLM judge to verify answer confidence")
+
+
+class JudgeResult(BaseModel):
+    """Independent LLM evaluation of answer groundedness."""
+
+    score: float = Field(..., ge=0.0, le=1.0)
+    assessment: str
+    agrees_with_answer: bool
 
 
 class AskMetadata(BaseModel):
@@ -114,6 +123,7 @@ class AskMetadata(BaseModel):
     sources_considered: int
     retrieval_time_ms: float  # Time for embedding + ChromaDB search
     generation_time_ms: float  # Time for LLM call
+    judge: JudgeResult | None = None  # Present when judge=true in request
 
 
 class AskResponse(BaseModel):
