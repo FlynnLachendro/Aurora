@@ -61,6 +61,13 @@
 - No-data handling perfect at all cap values (2/2 out-of-scope questions correctly returned 0.0)
 - Key insight: more context ≠ better answers for this dataset. Retrieval quality matters more than quantity.
 
+## LLM-as-Judge Results (2026-04-01)
+- Judge (same Gemini Flash model, different prompt) scores 1.0 on all 8 test questions
+- Agrees with every answer including no-data cases
+- Confirms all answers are fully grounded in source data
+- Hybrid confidence (0.83-0.90) is intentionally more conservative than judge (1.0) — retrieval distance pulls scores down from LLM's perfect self-reports
+- Judge validates the approach: answers are correct, hybrid scoring adds appropriate caution
+
 ## Domain Notes
 
 ### Project: Aurora Take-Home
