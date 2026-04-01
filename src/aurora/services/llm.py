@@ -1,6 +1,7 @@
 """LLM answer generation — Gemini 2.0 Flash via OpenRouter (see README for benchmarks)."""
 
 import json
+from typing import Any
 
 from loguru import logger
 from openai import AsyncOpenAI
@@ -59,16 +60,18 @@ def build_user_prompt(
     return "\n".join(parts)
 
 
-def parse_llm_response(content: str) -> dict:
+def parse_llm_response(content: str) -> dict[str, Any]:
     """Parse JSON from LLM response, with fallback for text-wrapped JSON."""
     try:
-        return json.loads(content)
+        result: dict[str, Any] = json.loads(content)
+        return result
     except json.JSONDecodeError:
         # Fallback: extract JSON object from surrounding text
         start = content.find("{")
         end = content.rfind("}") + 1
         if start != -1 and end > start:
-            return json.loads(content[start:end])
+            result = json.loads(content[start:end])
+            return result
         raise
 
 

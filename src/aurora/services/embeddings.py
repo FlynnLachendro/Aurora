@@ -1,6 +1,7 @@
 """ChromaDB vector store — single collection, Gemini embedding API, cosine similarity."""
 
 import time
+from typing import Any
 
 import chromadb
 import chromadb.utils.embedding_functions as ef
@@ -14,15 +15,17 @@ class VectorStore:
     def __init__(self, persist_dir: str, embedding_model: str, use_gemini: bool = False) -> None:
         self._client = chromadb.PersistentClient(path=persist_dir)
         # Gemini API in prod, ChromaDB default in tests (no API key needed)
+        embedding_fn: Any
         if use_gemini:
-            self._embedding_fn = ef.GoogleGeminiEmbeddingFunction(
+            embedding_fn = ef.GoogleGeminiEmbeddingFunction(
                 model_name=embedding_model,
             )
         else:
-            self._embedding_fn = ef.DefaultEmbeddingFunction()
+            embedding_fn = ef.DefaultEmbeddingFunction()
+        self._embedding_fn = embedding_fn
         self._collection = self._client.get_or_create_collection(
             name=COLLECTION_NAME,
-            embedding_function=self._embedding_fn,
+            embedding_function=embedding_fn,
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -70,19 +73,19 @@ class VectorStore:
 
         logger.info(f"Ingestion complete. Total: {self._collection.count()} documents")
 
-    def embed(self, text: str) -> list[float]:
+    def embed(self, text: str) -> list[Any]:
         """Embed once, return raw vector — reused across all 5 retrieval queries."""
-        return self._embedding_fn([text])[0]
+        return self._embedding_fn([text])[0]  # type: ignore[no-any-return]
 
     def query(
         self,
         text: str | None = None,
-        embedding: list[float] | None = None,
+        embedding: list[Any] | None = None,
         top_k: int = 15,
-        where: dict | None = None,
-    ) -> dict:
+        where: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Query by text or pre-computed vector. Pre-computed skips the embed API call."""
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "n_results": top_k,
             "include": ["documents", "metadatas", "distances"],
         }
@@ -92,4 +95,4 @@ class VectorStore:
             kwargs["query_texts"] = [text]
         if where:
             kwargs["where"] = where
-        return self._collection.query(**kwargs)
+        return dict(self._collection.query(**kwargs))

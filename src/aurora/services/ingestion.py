@@ -1,6 +1,7 @@
 """Fetches all 5 Aurora API sources concurrently, converts records to natural language docs."""
 
 import asyncio
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -31,7 +32,7 @@ from aurora.models import (
 async def _get_with_retry(
     client: httpx.AsyncClient,
     path: str,
-    params: dict,
+    params: dict[str, Any],
     max_retries: int = 3,
 ) -> httpx.Response:
     """GET with retry for Aurora's intermittent 4xx/5xx errors."""
@@ -51,9 +52,9 @@ async def fetch_all_paginated(
     client: httpx.AsyncClient,
     path: str,
     page_size: int = 100,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Paginate through an Aurora API endpoint, collecting all items."""
-    items: list[dict] = []
+    items: list[dict[str, Any]] = []
     skip = 0
 
     first_resp = await _get_with_retry(client, path, {"skip": 0, "limit": page_size})
@@ -71,10 +72,11 @@ async def fetch_all_paginated(
     return items
 
 
-async def fetch_profile(client: httpx.AsyncClient) -> dict:
+async def fetch_profile(client: httpx.AsyncClient) -> dict[str, Any]:
     resp = await client.get(API_PROFILE_PATH)
     resp.raise_for_status()
-    return resp.json()
+    result: dict[str, Any] = resp.json()
+    return result
 
 
 # --- Document text constructors ---

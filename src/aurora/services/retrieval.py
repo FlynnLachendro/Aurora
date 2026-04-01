@@ -1,5 +1,7 @@
 """Multi-source retrieval — embed once, query primary + per-source-type enrichment."""
 
+from typing import Any
+
 from loguru import logger
 
 from aurora.core.constants import (
@@ -21,7 +23,7 @@ class RetrievalService:
         self._top_k = top_k
         self._similarity_threshold = similarity_threshold
 
-    def _parse_results(self, raw: dict) -> list[RetrievedChunk]:
+    def _parse_results(self, raw: dict[str, Any]) -> list[RetrievedChunk]:
         """Parse ChromaDB results, filtering by cosine distance threshold."""
         chunks: list[RetrievedChunk] = []
         if not raw["ids"] or not raw["ids"][0]:
