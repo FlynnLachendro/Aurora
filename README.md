@@ -57,7 +57,7 @@ docker run -p 8000:8000 -e OPENROUTER_API_KEY=your-key aurora-qa
 ```bash
 curl -X POST http://localhost:8000/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "What is Sophia Al-Farsi'\''s most recent request?"}'
+  -d '{"question": "What is Sophia Al-Farsis most recent request?"}'
 ```
 
 ## API
