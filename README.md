@@ -3,6 +3,8 @@
 **Live URL**: https://aurora-qa-production.up.railway.app
 **Swagger Docs**: https://aurora-qa-production.up.railway.app/docs
 
+> **First request note**: On cold start, the service fetches and embeds all ~3,873 records from Aurora's API (~90s). A keep-alive cron pings the service every 5 minutes to prevent this, but if the container has been idle, the first request may take up to 2 minutes while data is ingested. Subsequent requests are fast (1.5-3s).
+
 A question-answering service that provides precise, grounded insights into member data from Aurora's concierge platform. Answers natural language questions by combining semantic search over member history with LLM-powered answer generation.
 
 > **Note on data sources**: The assignment specifies integrating with the Messages API. This service goes beyond that by also indexing all available hackathon endpoints — calendar events (154), Spotify listening history (338), Whoop health data (31 days), and the member profile — enabling cross-domain questions like "How did James sleep on February 15th?" or "What does James listen to during deep work?" that would be unanswerable from messages alone.
