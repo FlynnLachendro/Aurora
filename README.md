@@ -96,7 +96,20 @@ Returns `{"status": "ok"}` for health checks.
 | No-data handling | Similarity threshold filter, skip LLM call | Prevents hallucination on out-of-scope queries, saves latency |
 | LLM context cap | Top 2 chunks sent to LLM (see chunk optimization below) | Benchmarked 1-10: confidence flat, generation time scales linearly |
 | Warm restart | `is_populated()` check on startup | Skip re-ingestion if data exists — fast restarts after first deploy |
-| Confidence calibration | Rubric in system prompt (0.9+ explicit, 0.7-0.9 inference, <0.5 insufficient) | Prevents model from always returning high confidence |
+| Confidence scoring | Hybrid: 50% retrieval distance + 50% LLM self-report | Grounds confidence in data relevance, not just LLM self-assessment (see below) |
+
+## Confidence Scoring
+
+Rather than relying solely on the LLM's self-reported confidence (which can be poorly calibrated), we use a **hybrid approach** that blends two signals:
+
+1. **Retrieval confidence** (50%) — derived from the cosine distance of the best matching chunk. Distance 0.0 (identical) maps to 1.0 confidence, distance 1.0+ maps to 0.0. This is grounded in actual data similarity.
+2. **LLM confidence** (50%) — the model's self-assessed score, guided by a calibration rubric in the system prompt (0.9+ = explicit, 0.7-0.9 = inference, <0.5 = insufficient).
+
+`final_confidence = 0.5 * retrieval_confidence + 0.5 * llm_confidence`
+
+This means even if the LLM is overconfident about a weakly-matched retrieval, the low retrieval score pulls the final confidence down. Conversely, if retrieval finds a strong match but the LLM hedges, the retrieval signal lifts the score.
+
+For no-data scenarios (no chunks pass threshold), the LLM is skipped entirely and confidence returns 0.0.
 
 ## LLM Benchmarks
 
