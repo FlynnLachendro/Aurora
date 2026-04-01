@@ -11,6 +11,8 @@
 | 2026-03-31 | self | GoogleGeminiEmbeddingFunction reads GEMINI_API_KEY from os.environ, not constructor | Must set os.environ["GEMINI_API_KEY"] before creating the embedding function |
 | 2026-03-31 | self | Google embed API has 100-item batch limit, also hit 3000 req/min rate limit | Reduced UPSERT_BATCH_SIZE to 100, added retry with backoff for 429s |
 | 2026-03-31 | self | Railway PORT env var not used — hardcoded 8000 in Dockerfile CMD | Use `${PORT}` in CMD with shell form |
+| 2026-04-01 | self | Reasoning traces were just restating the answer with source IDs, not showing logical path | Updated system prompt with explicit reasoning format: search → evidence → interpretation → confidence rationale |
+| 2026-04-01 | self | Improving reasoning prompt caused hallucination regression — "capital of France" answered from general knowledge | Strengthened rule: "NEVER use general knowledge", "every claim MUST cite a source ID", "return 0.0 if no source" |
 
 ## User Preferences
 - Uses `uv` for package management, avoids venvs
