@@ -1,17 +1,4 @@
-"""
-Data ingestion service — fetches all data from Aurora's API and converts to documents.
-
-Handles 5 data sources concurrently:
-- /messages/ (3,349 concierge messages from multiple members)
-- /hackathon/calendar-events/ (154 events for James Fletcher)
-- /hackathon/spotify/ (338 listening history entries)
-- /hackathon/whoop/ (31 days of health/sleep/fitness data)
-- /hackathon/me/ (James Fletcher's profile)
-
-Each record is converted to a natural language sentence for embedding.
-Raw JSON would produce poor similarity scores since the embedding model
-(gemini-embedding-001) was trained on natural language text.
-"""
+"""Fetches all 5 Aurora API sources concurrently, converts records to natural language docs."""
 
 import asyncio
 
@@ -47,7 +34,7 @@ async def _get_with_retry(
     params: dict,
     max_retries: int = 3,
 ) -> httpx.Response:
-    """GET with retry — Aurora's API returns intermittent 4xx/5xx errors."""
+    """GET with retry for Aurora's intermittent 4xx/5xx errors."""
     for attempt in range(max_retries):
         resp = await client.get(path, params=params)
         if resp.status_code < 400:
@@ -65,7 +52,7 @@ async def fetch_all_paginated(
     path: str,
     page_size: int = 100,
 ) -> list[dict]:
-    """Fetch all pages from a paginated Aurora API endpoint."""
+    """Paginate through an Aurora API endpoint, collecting all items."""
     items: list[dict] = []
     skip = 0
 
@@ -91,9 +78,7 @@ async def fetch_profile(client: httpx.AsyncClient) -> dict:
 
 
 # --- Document text constructors ---
-# Each function converts an API record into a natural language sentence
-# suitable for semantic embedding. The format matters — it determines
-# how well the embedding model matches questions to relevant data.
+# Convert API records to natural language for embedding (JSON embeds poorly).
 
 
 def message_to_document(msg: Message) -> Document:
@@ -185,11 +170,7 @@ def profile_to_document(profile: UserProfile) -> Document:
 async def fetch_all_data(
     settings: Settings,
 ) -> tuple[list[Document], UserProfile]:
-    """Fetch all 5 Aurora API endpoints concurrently and convert to documents.
-
-    All endpoints are fetched in parallel via asyncio.gather() for speed.
-    The Aurora API requires follow_redirects=True (returns 307 on some paths).
-    """
+    """Fetch all 5 endpoints concurrently, convert to documents. Needs follow_redirects."""
     async with httpx.AsyncClient(base_url=settings.aurora_api_base_url, timeout=30.0, follow_redirects=True) as client:
         messages_raw, calendar_raw, spotify_raw, whoop_raw, profile_raw = await asyncio.gather(
             fetch_all_paginated(client, API_MESSAGES_PATH, settings.aurora_api_page_size),

@@ -1,9 +1,4 @@
-"""
-Application settings loaded from environment variables via Pydantic Settings.
-
-All tunables are env vars so they can be configured in Railway's dashboard
-without code changes. The .env file is loaded for local development.
-"""
+"""Settings from env vars — configurable via Railway dashboard or .env locally."""
 
 from pydantic_settings import BaseSettings
 

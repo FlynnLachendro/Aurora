@@ -1,11 +1,4 @@
-"""
-Pydantic models for Aurora Q&A service.
-
-Three categories:
-1. Aurora API data models — typed representations of the 5 external API endpoints
-2. Request/response models — the POST /ask contract
-3. Internal models — Document (for ChromaDB ingestion) and RetrievedChunk (search results)
-"""
+"""Pydantic models — Aurora API types, POST /ask contract, internal Document/RetrievedChunk."""
 
 from typing import Generic, TypeVar
 
@@ -15,8 +8,7 @@ T = TypeVar("T")
 
 
 # --- Aurora API data models ---
-# These match the exact JSON shapes returned by Aurora's API at
-# november7-730026606190.europe-west1.run.app
+# Match the JSON shapes from november7-730026606190.europe-west1.run.app
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
@@ -134,12 +126,7 @@ class AskResponse(BaseModel):
 
 
 class Document(BaseModel):
-    """A document prepared for ChromaDB ingestion.
-
-    text: Natural language representation of the record (for embedding).
-    source_id: Unique ID — native for messages/calendar/spotify, synthetic for whoop/profile.
-    source_type: Used for metadata filtering in multi-source retrieval.
-    """
+    """Prepared for ChromaDB — natural language text + metadata for filtering."""
 
     source_id: str
     source_type: str
@@ -149,7 +136,7 @@ class Document(BaseModel):
 
 
 class RetrievedChunk(BaseModel):
-    """A search result from ChromaDB with its similarity distance."""
+    """ChromaDB search result with cosine distance."""
 
     source_id: str
     source_type: str

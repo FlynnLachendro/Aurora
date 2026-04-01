@@ -1,10 +1,4 @@
-"""
-POST /ask endpoint — the core API surface.
-
-Orchestrates retrieval → LLM generation and adds timing metadata to the response.
-Services are accessed via request.app.state (set during lifespan startup),
-making them easy to override in integration tests.
-"""
+"""POST /ask — orchestrates retrieval → LLM generation, adds timing metadata."""
 
 import time
 
@@ -26,8 +20,7 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
 
     logger.info(f"Question: {body.question}")
 
-    # Time retrieval (embed + ChromaDB search) and generation (LLM call) separately
-    # so metadata shows where latency is spent — useful for debugging and evaluation.
+    # Time retrieval and generation separately for observability
     retrieval_start = time.perf_counter()
     chunks = retrieval_service.retrieve(body.question)
     retrieval_ms = (time.perf_counter() - retrieval_start) * 1000
