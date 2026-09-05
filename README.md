@@ -1,7 +1,12 @@
 # Aurora Q&A Service
 
-**Live URL**: https://aurora-qa-production.up.railway.app
-**Swagger Docs**: https://aurora-qa-production.up.railway.app/docs
+> **Archived — March/April 2026.** Built as a take-home assignment for Aurora.
+> The Railway deployment has been shut down, so the live URL and Swagger links
+> below no longer resolve. Kept public as a record of the work; the code, tests
+> and Dockerfile all still run locally (see Setup below).
+
+**Live URL**: ~~https://aurora-qa-production.up.railway.app~~ (retired)
+**Swagger Docs**: ~~https://aurora-qa-production.up.railway.app/docs~~ (retired)
 
 > **First request note**: On cold start, the service fetches and embeds all ~3,873 records from Aurora's API (~90s). A keep-alive cron pings the service every 5 minutes to prevent this, but if the container has been idle, the first request may take up to 2 minutes while data is ingested. Subsequent requests are fast (1.5-3s).
 
