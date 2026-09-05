@@ -1,9 +1,6 @@
 # Aurora Q&A Service
 
-> **Archived — March/April 2026.** Built as a take-home assignment for Aurora.
-> The Railway deployment has been shut down, so the live URL and Swagger links
-> below no longer resolve. Kept public as a record of the work; the code, tests
-> and Dockerfile all still run locally (see Setup below).
+> **Archived — March/April 2026.** Built as a take-home assignment for Aurora. The Railway deployment has been shut down, so the live URL and Swagger links below no longer resolve. Kept public as a record of the work; the code, tests and Dockerfile all still run locally (see Setup below).
 
 **Live URL**: ~~https://aurora-qa-production.up.railway.app~~ (retired)
 **Swagger Docs**: ~~https://aurora-qa-production.up.railway.app/docs~~ (retired)
